@@ -1,0 +1,5 @@
+; $Id$
+name = LiveTweets
+description = Enables configurable LiveTweet blocks which will query the twitter api and update in real time
+core = 6.x
+

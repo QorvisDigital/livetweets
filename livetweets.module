@@ -1,0 +1,121 @@
+<?php
+/*
+ * @file
+ * defines the default hooks usd by the livetweets module 
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function livetweets_menu()
+{
+	$items = array();
+
+  $items['admin/settings/livetweets'] = array(
+    'title' => t('LiveTweets Settings'),
+    'description' => t('Configure LiveTweets settings'),
+    'page callback' => 'drupal_get_form',
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+    'page arguments' => array('livetweets_admin'),
+    'file' => 'includes/livetweets.admin.inc'
+   );
+
+  return $items;
+}
+
+/*
+ * implementation of hook_block
+ */
+function livetweets_block($op = 'list', $delta = 0, $edit = array()){
+  switch ($op){
+   
+    case 'list':
+      $blocks = array();
+      $count = variable_get('livetweets_blocks_count', 1);
+      for($i=0; $i < $count; $i++){
+        $blocks[$i] = array(
+          'info' => t('LiveTweets Block') . ' ' . ($i)
+        );
+      }
+      return $blocks;
+      break;
+     
+   case 'configure':
+     $settings = variable_get('livetweets_block_settings_' . $delta, array('query' => '#drupal','counter' => 1, 'display_count' => 4));
+     
+     $form['query'] = array(
+      '#type' => 'textfield',
+      '#default_value' => $settings['query'],
+      '#title' => t('Twitter Search API Query'),
+      '#description' => t('The search query you\'d like for this block to display.'),
+     );
+     
+    /* $form['counter'] = array(
+      '#type' => 'checkbox',
+      '#title' => 'Display realtime counter',
+      '#description' => 'Check this box if you want the timestamps to update using time ago in words in real time.',
+      '#default_value' => $settings['counter']
+     );
+     */
+     $form['display_count'] = array(
+      '#type' => 'textfield',
+      '#title' => 'Tweets to show before cutoff',
+      '#description' => 'enter the number of tweets to display before cutoff',
+      '#default_value' => $settings['display_count']
+     );
+     
+     return $form;
+     break;
+     
+   case 'save':
+     //$settings['counter'] = $edit['counter'];
+     $settings['query'] = $edit['query'];
+     $settings['display_count'] = $edit['display_count'];
+     variable_set('livetweets_block_settings_' . $delta, $settings); 
+     break;
+     
+   case 'view':
+     // prepare output for theme
+     $content = $block['content'];
+     
+     $settings = variable_get('livetweets_block_settings_' . $delta, array());
+     $to_js = array('liveTweets'=>array('blocks'=>array($delta => $settings)));
+    
+     // extend settings with block specific config to js
+     drupal_add_js($to_js ,'setting');
+     
+     // expose our block-content to themes
+     $block['content'] = theme('livetweets_block', $content);
+     return $block;
+     break;
+  }
+}
+
+/*
+ * implementation of hook_theme()
+ */
+function livetweets_theme(){
+  return array(
+    'livetweets_block' => array(
+      'template' => 'templates/livetweets-block',
+      'arguments' => array('content' => null, 'js' => null)
+    )
+  );
+}
+
+/*
+ * implementation of hook_init()
+ */
+function livetweets_init()
+{
+  
+  // add the global settings to js
+  $global_settings['update_interval'] = variable_get('livetweets_updates_interval', 5000);
+  drupal_add_js( array('liveTweets'=>array('config' => $global_settings)), 'setting');
+  
+  // add the css and js required to the page
+  drupal_add_css( drupal_get_path('module','livetweets') . '/css/livetweets.css' );
+  drupal_add_js( drupal_get_path('module','livetweets') . '/js/livetweets.js', 'file' );
+  
+}
